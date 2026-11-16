@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Daily Work & Balance</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: #f3f4f6; color: #111827; padding-bottom: 40px; }
+
+    /* Top Balance Summary */
+    .header { background: #1e293b; color: white; padding: 14px 14px 16px; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .sum-box { background: rgba(255,255,255,0.12); padding: 12px 8px; border-radius: 10px; text-align: center; }
+    .sum-box.balance { background: #dcfce7; color: #14532d; }
+    .sum-box.balance.negative { background: #fee2e2; color: #991b1b; }
+    .sum-label { font-size: 12px; font-weight: 700; opacity: 0.85; text-transform: uppercase; }
+    .sum-val { font-size: 22px; font-weight: 800; margin-top: 3px; }
+
+    /* Cards */
+    .card { background: white; margin: 12px; border-radius: 14px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+    /* Calendar */
+    .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .cal-nav button { background: #e5e7eb; border: none; border-radius: 8px; padding: 8px 14px; font-size: 18px; font-weight: bold; cursor: pointer; }
+    .cal-month { font-size: 18px; font-weight: 700; }
+
+    .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; font-weight: 700; color: #6b7280; margin-bottom: 6px; }
+    .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+
+    .day-cell {
+      min-height: 54px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 5px 2px;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      cursor: pointer; background: #fff; user-select: none;
+    }
+    .day-cell.empty { border: none; background: transparent; cursor: default; }
+    .day-cell.today { border: 2px solid #0f766e; }
+    .day-cell.has-data { background: #ecfdf5; border-color: #6ee7b7; }
+    .day-num { font-size: 14px; font-weight: 700; color: #1f2937; }
+    .day-earn { font-size: 11px; font-weight: 800; color: #047857; margin-top: 4px; }
+
+    /* Payment Section */
+    .btn-add-pay {
+      width: 100%; background: #2563eb; color: white; border: none;
+      border-radius: 12px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    .sec-title { font-size: 15px; font-weight: 800; color: #374151; margin: 14px 0 8px; }
+    .pay-item {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px; margin-bottom: 8px;
+    }
+    .pay-amt { font-size: 19px; font-weight: 800; color: #1d4ed8; }
+    .pay-date { font-size: 12px; font-weight: 600; color: #475569; margin-top: 2px; }
+    .pay-del {
+      background: #fee2e2; color: #b91c1c; border: none; border-radius: 8px;
+      padding: 8px 11px; font-size: 14px; font-weight: 800; cursor: pointer;
+    }
+    .empty-pay { text-align: center; color: #9ca3af; font-size: 13px; padding: 10px 0; }
+
+    /* Modals */
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      z-index: 100; align-items: flex-end; justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: white; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0;
+      padding: 20px 18px 26px; animation: slideUp 0.18s ease-out;
+    }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-title { font-size: 20px; font-weight: 800; color: #0f766e; }
+    .close-btn { background: #f3f4f6; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; }
+
+    .row-box {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 12px;
+    }
+    .row-label { font-size: 17px; font-weight: 700; }
+    .row-sub { font-size: 14px; color: #047857; font-weight: 700; margin-top: 2px; }
+    .row-input {
+      width: 125px; font-size: 22px; font-weight: 800; text-align: center;
+      padding: 8px; border: 2px solid #cbd5e1; border-radius: 10px; background: white;
+    }
+    .row-input:focus { outline: none; border-color: #0f766e; }
+
+    .day-total-bar {
+      display: flex; justify-content: space-between; font-size: 19px; font-weight: 800;
+      padding: 8px 4px 14px;
+    }
+    .btn-save {
+      width: 100%; background: #0f766e; color: white; border: none;
+      border-radius: 12px; padding: 15px; font-size: 17px; font-weight: 700; cursor: pointer;
+    }
+    .btn-save-blue { background: #2563eb; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Summary: Received & Balance -->
+  <div class="header">
+    <div class="summary-grid">
+      <div class="sum-box">
+        <div class="sum-label">Received</div>
+        <div class="sum-val" id="allPaid">₹0</div>
+      </div>
+      <div class="sum-box balance" id="balBox">
+        <div class="sum-label">Balance</div>
+        <div class="sum-val" id="allBalance">₹0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar Card -->
+  <div class="card">
+    <div class="cal-nav">
+      <button onclick="changeMonth(-1)">◀</button>
+      <div class="cal-month" id="monthLabel"></div>
+      <button onclick="changeMonth(1)">▶</button>
+    </div>
+
+    <div class="weekdays">
+      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    </div>
+    <div class="days-grid" id="daysGrid"></div>
+  </div>
+
+  <!-- Payments Card -->
+  <div class="card">
+    <button class="btn-add-pay" onclick="openPayModal()">+ Money Received</button>
+    <div class="sec-title">Payments Received</div>
+    <div id="payList"></div>
+  </div>
+
+  <!-- Daily Work Modal (Only 2 Rows) -->
+  <div class="modal-bg" id="workModalBg" onclick="if(event.target===this) closeWorkModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modalDateText"></div>
+        <button class="close-btn" onclick="closeWorkModal()">✕</button>
+      </div>
+
+      <!-- Row 1: ₹4 Piece -->
+      <div class="row-box">
+        <div>
+          <div class="row-label">₹4 Piece</div>
+          <div class="row-sub" id="sub4">= ₹0</div>
+        </div>
+        <input type="number" inputmode="numeric" id="inp4" class="row-input" placeholder="0" oninput="updateLiveWork()" />
+      </div>
+
+      <!-- Row 2: ₹10 Piece -->
+      <div class="row-box">
+        <div>
+          <div class="row-label">₹10 Piece</div>
+          <div class="row-sub" id="sub10">= ₹0</div>
+        </div>
+        <input type="number" inputmode="numeric" id="inp10" class="row-input" placeholder="0" oninput="updateLiveWork()" />
+      </div>
+
+      <div class="day-total-bar">
+        <span>Day Total:</span>
+        <span id="dayWorkTotal" style="color:#047857;">₹0</span>
+      </div>
+
+      <button class="btn-save" onclick="saveDay()">Save</button>
+    </div>
+  </div>
+
+  <!-- Payment Received Modal -->
+  <div class="modal-bg" id="payModalBg" onclick="if(event.target===this) closePayModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" style="color:#2563eb;">Money Received</div>
+        <button class="close-btn" onclick="closePayModal()">✕</button>
+      </div>
+
+      <div class="row-box" style="background:#eff6ff; border-color:#bfdbfe;">
+        <div>
+          <div class="row-label">Amount (₹)</div>
+          <div class="row-sub" style="color:#1d4ed8;">Subtracts from balance</div>
+        </div>
+        <input type="number" inputmode="numeric" id="payAmount" class="row-input" placeholder="5000" />
+      </div>
+
+      <button class="btn-save btn-save-blue" onclick="savePayment()">Save</button>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "hisab_app_v2";
+    let store = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"work":{},"payments":[]}');
+
+    const now = new Date();
+    let viewYear = now.getFullYear();
+    let viewMonth = now.getMonth();
+    let selectedKey = "";
+
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const shortMonths = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    function pad(n) { return n < 10 ? "0" + n : "" + n; }
+    function makeKey(y, m, d) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
+
+    function formatShortDate(key) {
+      if (!key) return "";
+      const [y, m, d] = key.split("-");
+      return `${parseInt(d)} ${shortMonths[parseInt(m) - 1]} ${y}`;
+    }
+
+    function render() {
+      document.getElementById("monthLabel").innerText = `${monthNames[viewMonth]} ${viewYear}`;
+      const grid = document.getElementById("daysGrid");
+      grid.innerHTML = "";
+
+      const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const todayKey = makeKey(now.getFullYear(), now.getMonth(), now.getDate());
+
+      for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement("div");
+        empty.className = "day-cell empty";
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = makeKey(viewYear, viewMonth, d);
+        const entry = store.work[key];
+        const cell = document.createElement("div");
+        cell.className = "day-cell";
+        if (key === todayKey) cell.classList.add("today");
+
+        let html = `<div class="day-num">${d}</div>`;
+        if (entry) {
+          const earn = (entry.p4 || 0) * 4 + (entry.p10 || 0) * 10;
+          if (earn > 0) {
+            cell.classList.add("has-data");
+            html += `<div class="day-earn">₹${earn}</div>`;
+          }
+        }
+        cell.innerHTML = html;
+        cell.onclick = () => openWorkModal(key, d);
+        grid.appendChild(cell);
+      }
+
+      // Render Payments List (newest first)
+      const payList = document.getElementById("payList");
+      if (store.payments.length === 0) {
+        payList.innerHTML = `<div class="empty-pay">No payments added yet</div>`;
+      } else {
+        payList.innerHTML = "";
+        [...store.payments].reverse().forEach((p, revIdx) => {
+          const actualIdx = store.payments.length - 1 - revIdx;
+          const item = document.createElement("div");
+          item.className = "pay-item";
+          item.innerHTML = `
+            <div>
+              <div class="pay-amt">₹${p.amount}</div>
+              ${p.date ? `<div class="pay-date">Added on ${formatShortDate(p.date)}</div>` : ""}
+            </div>
+            <button class="pay-del" onclick="deletePayment(${actualIdx})">✕</button>
+          `;
+          payList.appendChild(item);
+        });
+      }
+
+      // Received & Balance
+      let allW = 0, allP = 0;
+      Object.values(store.work).forEach(e => { allW += (e.p4 || 0) * 4 + (e.p10 || 0) * 10; });
+      store.payments.forEach(p => { allP += (p.amount || 0); });
+      const bal = allW - allP;
+
+      document.getElementById("allPaid").innerText = "₹" + allP;
+      document.getElementById("allBalance").innerText = "₹" + bal;
+      document.getElementById("balBox").classList.toggle("negative", bal < 0);
+    }
+
+    function saveStore() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      render();
+    }
+
+    function changeMonth(delta) {
+      viewMonth += delta;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      render();
+    }
+
+    // Work Modal
+    function openWorkModal(key, day) {
+      selectedKey = key;
+      document.getElementById("modalDateText").innerText = `${day} ${shortMonths[viewMonth]} ${viewYear}`;
+      const entry = store.work[key] || {};
+      document.getElementById("inp4").value = entry.p4 || "";
+      document.getElementById("inp10").value = entry.p10 || "";
+      updateLiveWork();
+      document.getElementById("workModalBg").classList.add("open");
+    }
+
+    function closeWorkModal() {
+      document.getElementById("workModalBg").classList.remove("open");
+    }
+
+    function updateLiveWork() {
+      const p4 = parseInt(document.getElementById("inp4").value) || 0;
+      const p10 = parseInt(document.getElementById("inp10").value) || 0;
+      document.getElementById("sub4").innerText = `= ₹${p4 * 4}`;
+      document.getElementById("sub10").innerText = `= ₹${p10 * 10}`;
+      document.getElementById("dayWorkTotal").innerText = `₹${p4 * 4 + p10 * 10}`;
+    }
+
+    function saveDay() {
+      const p4 = parseInt(document.getElementById("inp4").value) || 0;
+      const p10 = parseInt(document.getElementById("inp10").value) || 0;
+      if (p4 === 0 && p10 === 0) {
+        delete store.work[selectedKey];
+      } else {
+        store.work[selectedKey] = { p4, p10 };
+      }
+      saveStore();
+      closeWorkModal();
+    }
+
+    // Payment Modal
+    function openPayModal() {
+      document.getElementById("payAmount").value = "";
+      document.getElementById("payModalBg").classList.add("open");
+      setTimeout(() => document.getElementById("payAmount").focus(), 100);
+    }
+
+    function closePayModal() {
+      document.getElementById("payModalBg").classList.remove("open");
+    }
+
+    function savePayment() {
+      const amt = parseInt(document.getElementById("payAmount").value) || 0;
+      if (amt <= 0) {
+        alert("Please enter the amount received.");
+        return;
+      }
+      const d = new Date();
+      const todayKey = makeKey(d.getFullYear(), d.getMonth(), d.getDate());
+      store.payments.push({ amount: amt, date: todayKey });
+      saveStore();
+      closePayModal();
+    }
+
+    function deletePayment(idx) {
+      const amt = store.payments[idx]?.amount || 0;
+      if (confirm(`Delete ₹${amt} payment?`)) {
+        store.payments.splice(idx, 1);
+        saveStore();
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
